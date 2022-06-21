@@ -1,0 +1,25 @@
+function doGet() {
+  return HtmlService.createTemplateFromFile('index').evaluate()
+  .addMetaTag('viewport', 'width=device-width, initial-scale=1')
+  .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
+}
+
+function processForm(formObject){
+  var ss= SpreadsheetApp.openById('1cq5AlBhEq-q2hInZKzm-2V-M52Qhl-7hKJhyFPkpYx0');
+  var ws=ss.getSheets()[0]
+  ws.appendRow([
+    new Date(),
+    formObject.temperature,
+    formObject.country,
+    formObject.disaster,
+    formObject.solve,
+    formObject.name,
+    "'"+formObject.phone,
+      
+  ]);
+  var token = 'OntDg531OWxOboKsInIToEXgGBCUkq9BC3hiDCqLukE'
+  var msg = 'Climate Change System 2022 '+formObject.country +' '+formObject.name+'\n Tel Number '+formObject.phone
+  NotifyApp.sendNotify(token,msg)
+}
+
+//Code.gs
