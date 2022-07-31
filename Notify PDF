@@ -1,0 +1,107 @@
+function onFormSubmit() {
+  
+  var token1 = ["C9mGJZgErbpMxQ5Y6LPZR5jDMolXu6RhFnMofb6ORsL"];
+  
+  var form = FormApp.openById('1khvIe9L0vhjKohINxkZWObsR8LFqHKbNOn1KAmwfhIM'); 
+  var fRes = form.getResponses();
+  var formResponse = fRes[fRes.length - 1];
+  var itemResponses = formResponse.getItemResponses();
+  
+  var ss = SpreadsheetApp.openById('1jWuR0Nx_-FAAwWmbwar43sVpWOgcvS70z-H0saynEak');
+  var sheet = ss.getSheetByName('Form Responses 1');
+  var row = sheet.getActiveRange().getLastRow()+1;
+
+
+   var dynamicList = ss.getSheetByName('Sheet2').getRange('A1:A3');
+   var rangeRule = SpreadsheetApp.newDataValidation().requireValueInRange(dynamicList).build();
+   sheet.getRange(row,6).setDataValidation(rangeRule); 
+
+  
+  var recipients = 'relationship2013@gmail.com';
+  var subject = 'Submit a request for approval to attend a job apprication '+sheet.getName(); 
+  var body = 'Click the link to approve a job apprication' + ss.getUrl();
+  
+var msg = itemResponses[0].getResponse() + ' : Submit a request for approval to attend a job application' +'\n'+ ss.getUrl();;
+
+  sendLineNotify(msg,token1);
+ MailApp.sendEmail(recipients, subject, body);
+
+}
+
+function sendLineNotify(message,token) {
+  var options = {
+    "method": "post",
+    "payload": "message=" + message,
+    "headers": {
+    "Authorization": "Bearer " + token }
+};
+
+UrlFetchApp.fetch("https://notify-api.line.me/api/notify", options);
+}
+
+
+function approve() {
+   var token2 = "ye08r900yLoSAnFGNzsWZaI2EUtlNOwv8Id0V00MbK4";
+   var ss = SpreadsheetApp.getActiveSpreadsheet();
+   var sheet = ss.getActiveSheet();
+   var row = sheet.getActiveRange().getRow();
+   var cellvalue = sheet.getActiveCell().getValue().toString();
+   var sheetName = sheet.getName();   
+
+   
+    var recipients = "relationship2013@gmail.com";
+    var subject = 'Approval for a job application '+sheet.getName(); 
+    var body = sheet.getName() + 'You can view the results of the approval of the training at ' + ss.getUrl();
+   
+   var date = Utilities.formatDate(new Date(), "GMT+7", "dd/MM/");
+   var year = Number(Utilities.formatDate(new Date(), "GMT+7", "yyyy"));
+   var thaiyear = Number(Utilities.formatDate(new Date(), "GMT+7", "yyyy"))+543;
+   var time = Utilities.formatDate(new Date(), "GMT+7", "HH:mm");
+  
+   var data1 = sheet.getRange(row, 3,row).getValue();
+   var data2 = sheet.getRange(row, 4,row).getValue();
+   var data3 = sheet.getRange(row, 5,row).getDisplayValue();
+
+   var message = 'Notify the result of applying for a job apprication: '+cellvalue+'\n'+'Name-surname of approval:'+data1+'\n'+'Compant for a job application:'+data2+'\n'+'Date of approval notify:'+data3+'\n'+'Approval Date:'+ date+year;
+
+     if (cellvalue == 'Approved' || cellvalue == 'Not Approved' ) {
+        sendLineNotify(message, token2);
+        createBulkPDFs ();
+      }
+    }
+
+function createBulkPDFs () {
+  const pdfFolder = DriveApp.getFolderById("1OK56qZPGcL_odERv3GLU869TIV3ZbAOx");
+  const tempFolder = DriveApp.getFolderById("1cicAGNGX9-9_rPtYcQ-yZr2QQYy7Af-I");
+  const docFile = DriveApp.getFileById("1CEElsn0PdXSfjsDy5hwN4yPiQXYwdQLEyqMef88KMuE");
+  
+  const currentSheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
+  const row = currentSheet.getActiveCell().getRow();
+  const data = currentSheet.getRange(row, 1,1,currentSheet.getLastColumn()).getValues()[0]; 
+  createPDF(data[2], data[3],data[4], data[5], data[2], docFile, tempFolder, pdfFolder);
+
+}
+
+function createPDF (name,place,date,approve,pdfName,docFile,tempFolder,pdfFolder) {
+  const tempFile = docFile.makeCopy(tempFolder); 
+  const tempDocFile = DocumentApp.openById(tempFile.getId()); 
+  const body = tempDocFile.getBody(); 
+  
+  body.replaceText("{Full name}", name); 
+  body.replaceText("{Organization}", place); 
+  body.replaceText("{Date of Application}", date); 
+  body.replaceText("{Notification of Result}", approve);
+  
+  tempDocFile.saveAndClose(); 
+  const pdfContentBlob = tempFile.getAs(MimeType.PDF); 
+  const pdfFile = pdfFolder.createFile(pdfContentBlob).setName(pdfName);
+  pdfFile.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.COMMENT);
+
+  var sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
+  var row = sheet.getActiveRange().getLastRow();
+  var email = sheet.getRange(row,2).getValue().toString(); 
+
+  MailApp.sendEmail(email, 'Approval of a job application', 'Download the document\n'+pdfFile.getUrl());
+  tempFolder.removeFile(tempFile);
+
+}
